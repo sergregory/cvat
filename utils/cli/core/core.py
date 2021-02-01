@@ -25,16 +25,20 @@ class CLI():
 
     def tasks_data(self, task_id, resource_type, resources):
         """ Add local, remote, or shared files to an existing task. """
+        def load_local_files(resources):
+            for idx, resource in enumerate(resources):
+                yield (f'client_files[{idx}]', open(resource, mode='rb'))
+
         url = self.api.tasks_id_data(task_id)
         data = {}
         files = None
         if resource_type == ResourceType.LOCAL:
-            files = {'client_files[{}]'.format(i): open(f, 'rb') for i, f in enumerate(resources)}
+            files = load_local_files(resources) # {'client_files[{}]'.format(i): open(f, 'rb') for i, f in enumerate(resources)}
         elif resource_type == ResourceType.REMOTE:
             data = {'remote_files[{}]'.format(i): f for i, f in enumerate(resources)}
         elif resource_type == ResourceType.SHARE:
             data = {'server_files[{}]'.format(i): f for i, f in enumerate(resources)}
-        data['image_quality'] = 50
+        data['image_quality'] = 100
         response = self.session.post(url, data=data, files=files)
         response.raise_for_status()
 
@@ -172,7 +176,7 @@ class CLI():
     def login(self, credentials):
         url = self.api.login
         auth = {'username': credentials[0], 'password': credentials[1]}
-        response = self.session.post(url, auth)
+        response = self.session.post(url, auth, verify=False)
         response.raise_for_status()
         if 'csrftoken' in response.cookies:
             self.session.headers['X-CSRFToken'] = response.cookies['csrftoken']
